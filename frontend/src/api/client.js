@@ -16,6 +16,7 @@ export const smtpSendersApi = {
 
 export const emailLogsApi = {
   list: (params) => api.get('/email-logs', { params }),
+  get: (id) => api.get(`/email-logs/${id}`),
 }
 
 export const sendEmailsApi = {
@@ -25,6 +26,25 @@ export const sendEmailsApi = {
 
 export const resultsApi = {
   list: (params) => api.get('/results', { params }),
+  filters: () => api.get('/results/filters'),
+  count: (params) => api.get('/results/count', { params }),
+}
+
+export const campaignsApi = {
+  list: () => api.get('/campaigns'),
+  get: (id) => api.get(`/campaigns/${id}`),
+  getTemplate: (campaignId) => api.get(`/campaigns/${campaignId}/template`),
+  create: (data) => api.post('/campaigns', data),
+  update: (id, data) => api.patch(`/campaigns/${id}`, data),
+  delete: (id) => api.delete(`/campaigns/${id}`),
+}
+
+export const mailTemplatesApi = {
+  list: () => api.get('/mail-templates'),
+  get: (id) => api.get(`/mail-templates/${id}`),
+  create: (data) => api.post('/mail-templates', data),
+  update: (id, data) => api.patch(`/mail-templates/${id}`, data),
+  delete: (id) => api.delete(`/mail-templates/${id}`),
 }
 
 export default api

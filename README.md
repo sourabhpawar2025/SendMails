@@ -7,7 +7,7 @@ Full-stack system to manage SMTP sender accounts, send personalized emails to re
 - **SMTP Sender Management**: Add / Edit / Delete / Enable / Disable senders; test SMTP connection (password never stored in test).
 - **Recipients**: Fetched from `results` table where `email IS NOT NULL`.
 - **Templates**: Placeholders `{{Title}}`, `{{Email}}`, `{{Phone}}`, `{{Instagram}}`, `{{Facebook}}`, `{{Twitter}}`, `{{Category}}`, `{{Location}}`.
-- **Email Logs**: Track From, To, Sent Time, Status (Sent/Failed) with filters.
+- **Email Logs**: Track From, To, Sent Time (IST), Status (Sent/Failed) with filters.
 - **Scheduling**: Celery + Redis for async/scheduled sending (250+ emails/day).
 - **Security**: SMTP passwords encrypted in DB; never exposed in API responses; env-based secrets.
 
@@ -15,7 +15,7 @@ Full-stack system to manage SMTP sender accounts, send personalized emails to re
 
 | Layer    | Stack                    |
 |----------|--------------------------|
-| Backend  | Python, FastAPI, SQLAlchemy |
+| Backend  | Python, **Django**, Django REST Framework |
 | DB       | MySQL (scraperdb)        |
 | Queue    | Celery, Redis            |
 | Frontend | React, Vite, TailwindCSS, Axios |
@@ -25,37 +25,31 @@ Full-stack system to manage SMTP sender accounts, send personalized emails to re
 ```
 SendMails/
 ├── backend/
-│   ├── app/
-│   │   ├── main.py           # FastAPI app
-│   │   ├── config.py         # Settings from env
-│   │   ├── database.py       # SQLAlchemy engine/session
-│   │   ├── models/           # Result, Query, EmailLog, SmtpSender
-│   │   ├── schemas/          # Pydantic request/response
-│   │   ├── api/routes/       # smtp_senders, email_logs, send
-│   │   ├── services/         # encryption, email_service, template_service
-│   │   └── tasks/            # Celery send_emails_task
-│   ├── tests/                # test_email_send.py, test_api_db.py
-│   ├── init_db.py            # Create smtp_senders + email_logs tables
+│   ├── manage.py
+│   ├── sendmails/           # Django project (settings, urls)
+│   ├── app/                 # Django app
+│   │   ├── models.py        # SmtpSender, EmailLog, Result, Query
+│   │   ├── serializers.py  # DRF serializers
+│   │   ├── views.py         # API views
+│   │   ├── urls.py
+│   │   ├── services/        # encryption, email_service, template_service
+│   │   ├── tasks.py         # Celery send_emails_task
+│   │   └── celery_app.py
+│   ├── tests/
+│   ├── init_db.py           # Runs: python manage.py migrate
 │   ├── requirements.txt
 │   └── .env.example
 ├── frontend/
-│   ├── src/
-│   │   ├── App.jsx
-│   │   ├── api/client.js     # Axios API
-│   │   ├── pages/            # SmtpSendersPage, EmailLogsPage
-│   │   └── components/      # SenderForm, TestConnectionModal, SendEmailModal
-│   ├── package.json
-│   └── vite.config.js        # Proxy /api -> backend
-├── .env.example
+│   └── ...
 └── README.md
 ```
 
 ## Database (scraperdb)
 
-- **results**: Existing table (recipients). Used only where `email IS NOT NULL`.
-- **queries**: Independent; not used for sending.
-- **smtp_senders**: New table (created by `init_db.py`).
-- **email_logs**: New table (created by `init_db.py`).
+- **results**: Existing table (recipients). Used only where `email IS NOT NULL`. `managed = False`.
+- **queries**: Existing table; `managed = False`.
+- **smtp_senders**: Created by Django migrations.
+- **email_logs**: Created by Django migrations.
 
 ## Setup
 
@@ -77,21 +71,22 @@ copy .env.example .env
 
 - Set `MYSQL_*` for scraperdb.
 - Set `REDIS_*` if using Celery.
+- Set `DJANGO_SECRET_KEY` (and `ALLOWED_HOSTS` in production).
 - Generate and set `ENCRYPTION_KEY`:
   ```bash
   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
   ```
 
-Create new tables:
+Create tables (smtp_senders, email_logs; results/queries must already exist):
 
 ```bash
-python init_db.py
+python manage.py migrate
 ```
 
 Run API:
 
 ```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+python manage.py runserver 0.0.0.0:8000
 ```
 
 ### 2. Celery (optional, for scheduled/async send)
@@ -99,7 +94,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 Ensure Redis is running, then:
 
 ```bash
-celery -A app.tasks.celery_tasks worker -l info
+celery -A sendmails worker -l info
 ```
 
 ### 3. Frontend
@@ -129,8 +124,8 @@ Open http://localhost:5173. API is proxied to http://127.0.0.1:8000.
 
 ```bash
 cd backend
-python tests/test_api_db.py      # DB connectivity
-python tests/test_email_send.py  # Encryption + one test send (requires active sender and recipient)
+python tests/test_api_db.py      # DB connectivity (update for Django if needed)
+python tests/test_email_send.py  # Encryption + one test send (update for Django if needed)
 ```
 
 ## Security Notes

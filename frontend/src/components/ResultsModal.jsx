@@ -3,15 +3,16 @@ import { resultsApi, sendEmailsApi } from '../api/client'
 
 const COLS = [
   { key: 'id', label: 'ID' },
-  { key: 'title', label: 'Title' },
+  { key: 'name', label: 'Name' },
+  { key: 'website', label: 'Website' },
   { key: 'email', label: 'Email' },
-  { key: 'phones', label: 'Phones' },
+  { key: 'phone', label: 'Phone' },
   { key: 'instagram', label: 'Instagram' },
   { key: 'facebook', label: 'Facebook' },
   { key: 'twitter', label: 'Twitter' },
-  { key: 'category', label: 'Category' },
+  { key: 'keyword', label: 'Keyword' },
   { key: 'location', label: 'Location' },
-  { key: 'link', label: 'Link' },
+  { key: 'created_at', label: 'Created at' },
 ]
 
 const DEFAULT_SUBJECT = 'Hello {{Title}}'
@@ -25,7 +26,6 @@ export default function ResultsModal({ sender, onClose }) {
   const [records, setRecords] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [withEmailOnly, setWithEmailOnly] = useState(false)
   const [sending, setSending] = useState(false)
   const [sendResult, setSendResult] = useState(null)
 
@@ -33,7 +33,7 @@ export default function ResultsModal({ sender, onClose }) {
     try {
       setLoading(true)
       setError(null)
-      const { data } = await resultsApi.list({ limit: 2000, with_email_only: withEmailOnly })
+      const { data } = await resultsApi.list({ limit: 2000 })
       setRecords(data)
     } catch (e) {
       setError(e.response?.data?.detail || e.message || 'Failed to load results')
@@ -44,7 +44,7 @@ export default function ResultsModal({ sender, onClose }) {
 
   useEffect(() => {
     fetchResults()
-  }, [withEmailOnly])
+  }, [])
 
   const handleSendToFirst = async () => {
     if (!sender) return
@@ -74,16 +74,8 @@ export default function ResultsModal({ sender, onClose }) {
             <h2 className="text-lg font-semibold text-white">
               Results table (scraperdb) — {records.length} record{records.length !== 1 ? 's' : ''}
             </h2>
+            <p className="text-xs text-slate-400">Only rows with email; one record per unique email.</p>
             <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 text-sm text-slate-400">
-                <input
-                  type="checkbox"
-                  checked={withEmailOnly}
-                  onChange={(e) => setWithEmailOnly(e.target.checked)}
-                  className="rounded border-slate-600 bg-slate-800 text-amber-500"
-                />
-                With email only
-              </label>
               <button
                 type="button"
                 onClick={fetchResults}
@@ -117,6 +109,9 @@ export default function ResultsModal({ sender, onClose }) {
           )}
           {sendResult && (
             <div className={`mx-4 mt-2 rounded border px-3 py-2 text-sm ${sendResult.failed > 0 ? 'border-red-800 bg-red-950/50 text-red-300' : 'border-emerald-800 bg-emerald-950/50 text-emerald-300'}`}>
+              {sendResult.recipients_count === 0 && (
+                <p className="font-medium text-amber-400">No recipients were found.</p>
+              )}
               {sendResult.message}
               {sendResult.error_detail && (
                 <div className="mt-1 font-medium">Error: {sendResult.error_detail}</div>

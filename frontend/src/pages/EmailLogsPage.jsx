@@ -1,14 +1,17 @@
 import { useState, useEffect } from 'react'
-import { emailLogsApi, smtpSendersApi } from '../api/client'
+import { emailLogsApi, smtpSendersApi, campaignsApi } from '../api/client'
 
 export default function EmailLogsPage() {
   const [logs, setLogs] = useState([])
   const [senders, setSenders] = useState([])
+  const [campaigns, setCampaigns] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [filters, setFilters] = useState({
+    sender_id: '',
     sender_email: '',
     status: '',
+    campaign: '',
     date_from: '',
     date_to: '',
     limit: 50,
@@ -18,8 +21,10 @@ export default function EmailLogsPage() {
     try {
       setLoading(true)
       const params = {}
+      if (filters.sender_id) params.sender_id = filters.sender_id
       if (filters.sender_email) params.sender_email = filters.sender_email
       if (filters.status) params.status = filters.status
+      if (filters.campaign) params.campaign = filters.campaign
       if (filters.date_from) params.date_from = filters.date_from
       if (filters.date_to) params.date_to = filters.date_to
       if (filters.limit) params.limit = filters.limit
@@ -38,10 +43,13 @@ export default function EmailLogsPage() {
 
   useEffect(() => {
     fetchLogs()
-  }, [filters.sender_email, filters.status, filters.date_from, filters.date_to, filters.limit])
+  }, [filters.sender_id, filters.sender_email, filters.status, filters.campaign, filters.date_from, filters.date_to, filters.limit])
 
   useEffect(() => {
     smtpSendersApi.list().then(({ data }) => setSenders(data)).catch(() => {})
+  }, [])
+  useEffect(() => {
+    campaignsApi.list().then(({ data }) => setCampaigns(data || [])).catch(() => setCampaigns([]))
   }, [])
 
   const formatDate = (d) => {
@@ -71,13 +79,18 @@ export default function EmailLogsPage() {
         <div>
           <label className="mb-1 block text-xs text-slate-400">Sender</label>
           <select
-            value={filters.sender_email}
-            onChange={(e) => setFilters((f) => ({ ...f, sender_email: e.target.value }))}
+            value={filters.sender_id || ''}
+            onChange={(e) => {
+              const v = e.target.value
+              setFilters((f) => ({ ...f, sender_id: v, sender_email: v ? (senders.find((s) => String(s.id) === v)?.email || '') : '' }))
+            }}
             className="rounded border border-slate-600 bg-slate-800 px-3 py-1.5 text-sm text-slate-200"
           >
             <option value="">All</option>
             {senders.map((s) => (
-              <option key={s.id} value={s.email}>{s.email}</option>
+              <option key={s.id} value={String(s.id)}>
+                {s.sender_name || s.email} ({s.email})
+              </option>
             ))}
           </select>
         </div>
@@ -91,6 +104,19 @@ export default function EmailLogsPage() {
             <option value="">All</option>
             <option value="Sent">Sent</option>
             <option value="Failed">Failed</option>
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs text-slate-400">Campaign</label>
+          <select
+            value={filters.campaign}
+            onChange={(e) => setFilters((f) => ({ ...f, campaign: e.target.value }))}
+            className="rounded border border-slate-600 bg-slate-800 px-3 py-1.5 text-sm text-slate-200"
+          >
+            <option value="">All</option>
+            {campaigns.map((c) => (
+              <option key={c.id} value={c.name}>{c.name}</option>
+            ))}
           </select>
         </div>
         <div>
@@ -141,22 +167,26 @@ export default function EmailLogsPage() {
           <table className="min-w-full divide-y divide-slate-700">
             <thead>
               <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">Sender</th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">From</th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">To</th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">Sent Time</th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">Campaign</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">Remarks</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700">
               {logs.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
                     No email logs yet.
                   </td>
                 </tr>
               ) : (
                 logs.map((log) => (
                   <tr key={log.id} className="hover:bg-slate-800/50">
+                    <td className="px-4 py-3 text-sm text-slate-300">{log.sender_name || log.sender_email || '—'}</td>
                     <td className="px-4 py-3 text-sm text-slate-300">{log.sender_email}</td>
                     <td className="px-4 py-3 text-sm text-slate-300">{log.recipient_email}</td>
                     <td className="px-4 py-3 text-sm text-slate-400">{formatDate(log.sent_time)}</td>
@@ -171,6 +201,8 @@ export default function EmailLogsPage() {
                         {log.status}
                       </span>
                     </td>
+                    <td className="px-4 py-3 text-sm text-slate-300">{log.campaign_name || '—'}</td>
+                    <td className="max-w-[200px] truncate px-4 py-3 text-sm text-slate-400" title={log.remarks || ''}>{log.remarks || '—'}</td>
                   </tr>
                 ))
               )}

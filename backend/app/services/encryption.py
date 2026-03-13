@@ -2,18 +2,18 @@
 import base64
 import os
 from cryptography.fernet import Fernet, InvalidToken
-from app.config import get_settings
+from django.conf import settings
 
 
-def _get_fernet() -> Fernet:
-    key = get_settings().ENCRYPTION_KEY.strip()
+def _get_fernet():
+    key = (getattr(settings, "ENCRYPTION_KEY", None) or "").strip()
     if not key:
         raise ValueError(
             "ENCRYPTION_KEY must be set in .env (32 bytes base64). "
-            "Generate with: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+            'Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"'
         )
     if isinstance(key, str):
-        key = key.encode() if isinstance(key, str) else key
+        key = key.encode()
     return Fernet(key)
 
 

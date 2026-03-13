@@ -54,7 +54,11 @@ export default function SendEmailModal({ sender, onClose, onSent }) {
         )}
         {result && (
           <div className="mb-4 rounded border border-emerald-800 bg-emerald-950/50 px-3 py-2 text-sm text-emerald-300">
-            {result.scheduled ? result.message : `${result.message}`}
+            {result.recipients_count === 0 && (
+              <p className="font-medium text-amber-400">No recipients were used.</p>
+            )}
+            {result.message}
+            {result.error_detail && <p className="mt-1 font-medium text-red-300">Error: {result.error_detail}</p>}
           </div>
         )}
         <form onSubmit={handleSend} className="space-y-3">

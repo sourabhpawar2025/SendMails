@@ -15,15 +15,15 @@ PLACEHOLDERS = [
 
 
 def get_placeholder_map(record: Any) -> dict:
-    """Build a map of {{Key}} -> value from a result record."""
+    """Build a map of {{Key}} -> value from a result record. Uses name/keyword columns; placeholders Title/Category for compatibility."""
     return {
-        "Title": getattr(record, "title", None) or "",
+        "Title": getattr(record, "name", None) or "",
         "Email": getattr(record, "email", None) or "",
-        "Phone": getattr(record, "phones", None) or "",
+        "Phone": getattr(record, "phone", None) or "",
         "Instagram": getattr(record, "instagram", None) or "",
         "Facebook": getattr(record, "facebook", None) or "",
         "Twitter": getattr(record, "twitter", None) or "",
-        "Category": getattr(record, "category", None) or "",
+        "Category": getattr(record, "keyword", None) or "",
         "Location": getattr(record, "location", None) or "",
     }
 
